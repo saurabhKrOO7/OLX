@@ -65,7 +65,7 @@ const TabsLayout = () => {
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="explore"
         options={{
           title: "Explore",
@@ -74,14 +74,24 @@ const TabsLayout = () => {
             <TabIcon focused={focused} icon={icons.search} title="Explore" />
           ),
         }}
-      />
+      /> */}
       <Tabs.Screen
-        name="profile"
+        name="ProfileScreen"
         options={{
           title: "Profile",
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} icon={icons.person} title="Profile" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "About",
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon={icons.info} title="About" />
           ),
         }}
       />

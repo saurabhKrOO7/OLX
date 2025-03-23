@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
 import { logout } from "@/lib/appwrite";
 import { useGlobalContext } from "@/lib/global-provider";
 
@@ -48,6 +47,15 @@ const SettingsItem = ({
 const Profile = () => {
   const { user, refetch } = useGlobalContext();
 
+  // Format dates to a readable format.
+  const formattedRegistrationDate = user?.registration
+    ? new Date(user.registration).toDateString()
+    : "Not Provided";
+
+  const formattedAccessedDate = user?.accessedAt
+    ? new Date(user.accessedAt).toDateString()
+    : "Not Provided";
+
   const handleLogout = async () => {
     const result = await logout();
     if (result) {
@@ -65,8 +73,7 @@ const Profile = () => {
         contentContainerClassName="pb-32 px-7"
       >
         <View className="flex flex-row items-center justify-between mt-5">
-          <Text className="text-xl font-rubik-bold">Profile</Text>
-          <Image source={icons.bell} className="size-5" />
+          <Text className="text-xl font-rubik-bold">About</Text>
         </View>
 
         <View className="flex flex-row justify-center mt-5">
@@ -83,14 +90,17 @@ const Profile = () => {
           </View>
         </View>
 
-        <View className="flex flex-col mt-10">
-          <SettingsItem icon={icons.calendar} title="My Bookings" />
-          <SettingsItem icon={icons.wallet} title="Payments" />
-        </View>
-
-        <View className="flex flex-col mt-5 border-t pt-5 border-primary-200">
-          {settings.slice(2).map((item, index) => (
-            <SettingsItem key={index} {...item} />
+        <View className="flex flex-col mt-5">
+          {settings.map((item, index) => (
+            <View
+              key={index}
+              className="flex flex-row items-center py-3 border-gray-300"
+            >
+              <Image source={item.icon} className="w-6 h-6 mr-3" />
+              <Text className="text-lg font-rubik-medium text-black-300">
+                {item.title}
+              </Text>
+            </View>
           ))}
         </View>
 

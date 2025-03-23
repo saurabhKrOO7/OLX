@@ -1,7 +1,9 @@
+import React from "react";
 import icons from "@/constants/icons";
 import images from "@/constants/images";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Models } from "react-native-appwrite";
+import { storage, config } from "@/lib/appwrite";
 
 interface Props {
   item: Models.Document;
@@ -9,79 +11,104 @@ interface Props {
 }
 
 export const FeaturedCard = ({ item, onPress }: Props) => {
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchImageUrl = async () => {
+      try {
+        console.log("FeaturedCard: item.image:", item.image);
+        if (item.image) {
+          if (typeof item.image === "string" && item.image.startsWith("http")) {
+            setImageUrl(item.image);
+          } else {
+            const file = await storage.getFileView(
+              config.bucketId!,
+              item.image
+            );
+            console.log("FeaturedCard fetched file:", file);
+            setImageUrl(file.href);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching image URL in FeaturedCard:", error);
+        setImageUrl("https://example.com/placeholder.jpg"); // Fallback image
+      }
+    };
+
+    fetchImageUrl();
+  }, [item.image]);
+
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex flex-col items-start w-60 h-80 relative"
+      style={{
+        flex: 1, // Take up equal space in the grid
+        margin: 8, // Add margin for spacing between cards
+        borderRadius: 16,
+        overflow: "hidden",
+        backgroundColor: "white",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 5,
+      }}
     >
-      <Image source={{ uri: item.image }} className="size-full rounded-2xl" />
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={{
+            width: "100%",
+            height: 230,
+          }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View
+          style={{
+            width: "100%",
+            height: 160,
+            backgroundColor: "#e5e5e5",
+          }}
+        />
+      )}
 
       <Image
         source={images.cardGradient}
-        className="size-full rounded-2xl absolute bottom-0"
+        style={{
+          position: "absolute",
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+        }}
       />
 
-      <View className="flex flex-row items-center bg-white/90 px-3 py-1.5 rounded-full absolute top-5 right-5">
-        <Image source={icons.star} className="size-3.5" />
-        <Text className="text-xs font-rubik-bold text-primary-300 ml-1">
-          {item.rating}
-        </Text>
-      </View>
-
-      <View className="flex flex-col items-start absolute bottom-5 inset-x-5">
+      <View
+        style={{
+          position: "absolute",
+          bottom: 20,
+          left: 20,
+          right: 20,
+        }}
+      >
         <Text
-          className="text-xl font-rubik-extrabold text-white"
+          style={{ fontSize: 16, fontWeight: "800", color: "white" }}
           numberOfLines={1}
         >
           {item.name}
         </Text>
-        <Text className="text-base font-rubik text-white" numberOfLines={1}>
-          {item.address}
-        </Text>
-
-        <View className="flex flex-row items-center justify-between w-full">
-          <Text className="text-xl font-rubik-extrabold text-white">
-            ${item.price}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "white" }}>
+            ₹{item.Price}
           </Text>
-          <Image source={icons.heart} className="size-5" />
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-export const Card = ({ item, onPress }: Props) => {
-  return (
-    <TouchableOpacity
-      className="flex-1 w-full mt-4 px-3 py-4 rounded-lg bg-white shadow-lg shadow-black-100/70 relative"
-      onPress={onPress}
-    >
-      <View className="flex flex-row items-center absolute px-2 top-5 right-5 bg-white/90 p-1 rounded-full z-50">
-        <Image source={icons.star} className="size-2.5" />
-        <Text className="text-xs font-rubik-bold text-primary-300 ml-0.5">
-          {item.rating}
-        </Text>
-      </View>
-
-      <Image source={{ uri: item.image }} className="w-full h-40 rounded-lg" />
-
-      <View className="flex flex-col mt-2">
-        <Text className="text-base font-rubik-bold text-black-300">
-          {item.name}
-        </Text>
-        <Text className="text-xs font-rubik text-black-100">
-          {item.address}
-        </Text>
-
-        <View className="flex flex-row items-center justify-between mt-2">
-          <Text className="text-base font-rubik-bold text-primary-300">
-            ${item.price}
-          </Text>
-          <Image
-            source={icons.heart}
-            className="w-5 h-5 mr-2"
-            tintColor="#191D31"
-          />
+          <Image source={icons.heart} style={{ width: 20, height: 20 }} />
         </View>
       </View>
     </TouchableOpacity>

@@ -1,7 +1,10 @@
-import { config, databases } from '@/lib/appwrite';
+import { config, databases, storage, ID } from '@/lib/appwrite';
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, Button, Alert } from 'react-native';
-import { ID } from 'react-native-appwrite';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 const categories = [
   'Car',
@@ -11,173 +14,295 @@ const categories = [
   'Bikes',
   'Electronics',
   'Vehicles',
-  'More Categories',
+  'Other',
 ];
 
 const PostScreen = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>(categories[0]);
   const [formData, setFormData] = useState({
-    title: '',
+    name: '',
     description: '',
+    type: '',
     price: '',
+    phoneNumber: '',
+    image: null as string | null, // Allow string or null
   });
-
-  const handleCategoryPress = (category: string) => {
-    setSelectedCategory(category);
-  };
 
   const handleInputChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit =  () => {
-    
-      createPropertyDocument()
-      // const response = await fetch('https://cloud.appwrite.io/v1', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     category: selectedCategory,
-      //     ...formData,
-      //   }),
-      // });
+  // Function to pick an image from the gallery
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission denied', 'Sorry, we need camera roll permissions to upload images.');
+      return;
+    }
 
-    //   if (response.ok) {
-    //     Alert.alert('Success', 'Your item has been posted successfully!');
-    //     // Reset form and selected category
-    //     setFormData({ title: '', description: '', price: '' });
-    //     setSelectedCategory(null);
-    //   } else {
-    //     Alert.alert('Error', 'Failed to post your item. Please try again.');
-    //   }
-    // } catch (error) {
-    //   Alert.alert('Error', 'An error occurred. Please try again.');
-    // }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setFormData({ ...formData, image: result.assets[0].uri });
+    }
   };
 
-  async function createPropertyDocument() {
+  // Function to take a photo using the camera
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission denied', 'Sorry, we need camera permissions to take photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setFormData({ ...formData, image: result.assets[0].uri });
+    }
+  };
+
+  // Function to upload the image to Appwrite Storage
+  const uploadImage = async (imageUri: string) => {
     try {
+      console.log("Bucket ID:", config.bucketId); // Debugging: Check bucketId
+
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+
+      // Create a file object with the required properties
+      const file = {
+        uri: imageUri,
+        name: `image_${Date.now()}.jpg`, // Generate a unique name
+        type: 'image/jpeg', // Set the MIME type
+        size: blob.size,
+      };
+
+      // Upload the file to Appwrite storage
+      const uploadedFile = await storage.createFile(
+        config.bucketId!, // Ensure bucketId is passed
+        ID.unique(),
+        file
+      );
+
+      return uploadedFile.$id; // Return the file ID
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  };
+
+  // Function to handle form submission
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.description || !formData.price || !formData.type || !formData.phoneNumber || !formData.image) {
+      Alert.alert('Error', 'Please fill all the fields and select an image');
+      return;
+    }
+
+    try {
+      const imageFileId = await uploadImage(formData.image);
+
       const response = await databases.createDocument(
         config.databaseId!,
         config.propertiesCollectionId!,
-        ID.unique(), // Corrected: using ID.unique() properly
+        ID.unique(),
         {
-          name: "huj Doe",
-          type: "House",
-          Description: "Good",
-          address: " ",
-          price: 33,
-          area: 34.32,
-          bedrooms: 2,
-          rating: 3.2,
-          bathrooms: 3,
-          facilities: "Gym",
-          image: "https://picsum.photos/seed/picsum/200/300",
-          geolocation: "",
-        } // Data to insert
+          name: formData.name,
+          Description: formData.description,
+          type: formData.type,
+          Price: parseFloat(formData.price),
+          Phone: formData.phoneNumber,
+          image: imageFileId,
+        }
       );
 
       console.log("Document Created:", response);
-      return response;
+      Alert.alert('Success', 'Your item has been posted successfully!');
+      setFormData({ name: '', description: '', price: '', type: '', phoneNumber: '', image: null });
+      setSelectedCategory(categories[0]);
     } catch (error) {
       console.error("Error creating document:", error);
-      return null;
+      Alert.alert('Error', 'Failed to post your item. Please try again.');
     }
-  }
-
+  };
 
   return (
-    <View style={styles.container}>
-      {selectedCategory ? (
-        <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>Sell your {selectedCategory}</Text>
+    <LinearGradient colors={['#6a11cb', '#2575fc']} style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.title}>Post Your Product</Text>
+        <View style={styles.card}>
           <TextInput
             style={styles.input}
-            placeholder="Title"
-            value={formData.title}
-            onChangeText={(text) => handleInputChange('title', text)}
+            placeholder="Name"
+            placeholderTextColor="#999"
+            value={formData.name}
+            onChangeText={(text) => handleInputChange('name', text)}
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="Description"
+            placeholderTextColor="#999"
             value={formData.description}
             onChangeText={(text) => handleInputChange('description', text)}
+            multiline
           />
           <TextInput
             style={styles.input}
             placeholder="Price"
+            placeholderTextColor="#999"
             value={formData.price}
             onChangeText={(text) => handleInputChange('price', text)}
             keyboardType="numeric"
           />
-          <Button title="Submit" onPress={handleSubmit} />
-          <Button title="Back" onPress={() => setSelectedCategory(null)} />
-        </View>
-      ) : (
-        <>
-          <Text style={styles.title}>What do you want to sell?</Text>
-          <View style={styles.categoriesContainer}>
-            {categories.map((category, index) => (
-              <TouchableOpacity key={index} style={styles.categoryButton} onPress={() => handleCategoryPress(category)}>
-                <Text style={styles.categoryText}>{category}</Text>
-              </TouchableOpacity>
-            ))}
+          <TextInput
+            style={styles.input}
+            placeholder="Phone Number"
+            placeholderTextColor="#999"
+            value={formData.phoneNumber}
+            onChangeText={(text) => handleInputChange('phoneNumber', text)}
+            keyboardType="phone-pad"
+          />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedCategory}
+              onValueChange={(itemValue: string) => {
+                setSelectedCategory(itemValue);
+                handleInputChange('type', itemValue);
+              }}
+              style={styles.picker}
+              dropdownIconColor="#fff"
+            >
+              {categories.map((category, index) => (
+                <Picker.Item key={index} label={category} value={category} />
+              ))}
+            </Picker>
           </View>
-        </>
-      )}
-    </View>
+
+          {/* Image Picker Buttons */}
+          <View style={styles.imagePickerContainer}>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+              <Text style={styles.imagePickerText}>Select Image</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imagePickerButton} onPress={takePhoto}>
+              <Text style={styles.imagePickerText}>Take Photo</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Display selected image */}
+          {formData.image && (
+            <Image source={{ uri: formData.image }} style={styles.selectedImage} />
+          )}
+
+          {/* Submit Button */}
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>Submit</Text>
+            <MaterialIcons name="send" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#f8f8f8',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 40,
+    color: '#fff',
     textAlign: 'center',
+    marginBottom: 20,
   },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
   },
-  categoryButton: {
-    backgroundColor: '#0061FF',
+  input: {
+    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 10,
-    margin: 10,
-    width: '40%',
-    alignItems: 'center',
+    marginBottom: 15,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  categoryText: {
-    color: 'white',
+  multilineInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  picker: {
+    height: 50,
+    color: '#333',
+  },
+  imagePickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  imagePickerButton: {
+    backgroundColor: '#6a11cb',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  imagePickerText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  formContainer: {
-    flex: 1,
+  selectedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  submitButton: {
+    flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#6a11cb',
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 10,
   },
-  formTitle: {
-    fontSize: 24,
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: 'white',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
+    marginRight: 10,
   },
 });
 

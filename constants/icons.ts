@@ -66,4 +66,10 @@ export default {
   wifi,
   location,
   edit,
+  placeholderAvatar: "https://via.placeholder.com/100",
+  userCheck: "user-check",
+  clock: "clock",
+  mail: "mail",
+  smartphone: "smartphone",
+  refreshCw: "refresh-cw",
 };

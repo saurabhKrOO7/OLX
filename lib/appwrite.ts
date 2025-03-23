@@ -84,13 +84,11 @@ export async function getCurrentUser() {
     const result = await account.get();
     if (result.$id) {
       const userAvatar = avatar.getInitials(result.name);
-
       return {
         ...result,
         avatar: userAvatar.toString(),
       };
     }
-
     return null;
   } catch (error) {
     console.log(error);
@@ -98,32 +96,13 @@ export async function getCurrentUser() {
   }
 }
 
-// export async function createPropertyDocument() {
-//   try {
-//     const response = await databases.createDocument(
-//       config.databaseId!,
-//       config.propertiesCollectionId!,
-//       ID.unique(), // Corrected: using ID.unique() properly
-//       { name: "John Doe", age: 30, city: "Patna" } // Data to insert
-//     );
-
-//     console.log("Document Created:", response);
-//     return response;
-//   } catch (error) {
-//     console.error("Error creating document:", error);
-//     return null;
-//   }
-// }
-
-
 export async function getLatestProperties() {
   try {
     const result = await databases.listDocuments(
       config.databaseId!,
       config.propertiesCollectionId!,
-      [Query.orderAsc("$createdAt"), Query.limit(5)]
+      [Query.orderAsc("$createdAt"), Query.limit(19)]
     );
-
     return result.documents;
   } catch (error) {
     console.error(error);
@@ -143,19 +122,25 @@ export async function getProperties({
   try {
     const buildQuery = [Query.orderDesc("$createdAt")];
 
-    if (filter && filter !== "All")
+    if (filter && filter !== "All") {
       buildQuery.push(Query.equal("type", filter));
+    }
 
-    if (query)
+    if (query && query.trim().length > 0) {
       buildQuery.push(
         Query.or([
-          Query.search("name", query),
-          Query.search("address", query),
-          Query.search("type", query),
+          Query.contains("name", query),
+          Query.contains("type", query),
+          Query.contains("Description", query),
         ])
       );
+    }
 
-    if (limit) buildQuery.push(Query.limit(limit));
+    if (limit) {
+      buildQuery.push(Query.limit(limit));
+    }
+
+    console.log("Search buildQuery:", buildQuery);
 
     const result = await databases.listDocuments(
       config.databaseId!,
@@ -163,14 +148,40 @@ export async function getProperties({
       buildQuery
     );
 
-    return result.documents;
+    console.log("Fetched Documents:", result.documents);
+
+    const properties = await Promise.all(
+      result.documents.map(async (doc) => {
+        let imageUrl = "https://example.com/placeholder.jpg";
+
+        if (doc.image) {
+          try {
+            const file = await storage.getFileView(config.bucketId!, doc.image);
+            imageUrl = file.href;
+          } catch (error) {
+            console.error("Error fetching file URL:", error);
+          }
+        }
+
+        return {
+          id: doc.$id,
+          name: doc.name,
+          type: doc.type,
+          description: doc.Description,
+          price: doc.Price,
+          phone: doc.Phone,
+          image: imageUrl,
+        };
+      })
+    );
+
+    return properties;
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching properties:", error);
     return [];
   }
 }
 
-// write function to get property by id
 export async function getPropertyById({ id }: { id: string }) {
   try {
     const result = await databases.getDocument(
@@ -184,3 +195,5 @@ export async function getPropertyById({ id }: { id: string }) {
     return null;
   }
 }
+
+export { ID };

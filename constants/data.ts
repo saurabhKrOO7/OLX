@@ -69,36 +69,29 @@ export const categories = [
 
 export const settings = [
   {
-    title: "My Bookings",
-    icon: icons.calendar,
-  },
-  {
-    title: "Payments",
-    icon: icons.wallet,
-  },
-  {
-    title: "Profile",
-    icon: icons.person,
-  },
-  {
-    title: "Notifications",
-    icon: icons.bell,
-  },
-  {
-    title: "Security",
-    icon: icons.shield,
-  },
-  {
-    title: "Language",
-    icon: icons.language,
-  },
-  {
-    title: "Help Center",
+    title: "Version 1.0.0",
     icon: icons.info,
   },
   {
-    title: "Invite Friends",
+    title: "Last Update: March 2025",
+    icon: icons.wallet,
+  },
+  {
+    title: "Developed By: NITW Students",
     icon: icons.people,
+  },
+
+  {
+    title: "Privacy Policy",
+    icon: icons.bell,
+  },
+  {
+    title: "Terms & Conditions",
+    icon: icons.shield,
+  },
+  {
+    title: "Contact Support: support@unimart.com",
+    icon: icons.language,
   },
 ];
 

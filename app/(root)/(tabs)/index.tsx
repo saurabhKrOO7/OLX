@@ -1,6 +1,5 @@
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   Image,
   Text,
@@ -15,13 +14,11 @@ import icons from "@/constants/icons";
 
 import Search from "@/components/Search";
 import Filters from "@/components/Filters";
-import NoResults from "@/components/NoResults";
-import { Card, FeaturedCard } from "@/components/Cards";
+import { FeaturedCard } from "@/components/Cards"; // Import only FeaturedCard
 
 import { useAppwrite } from "@/lib/useAppwrite";
 import { useGlobalContext } from "@/lib/global-provider";
 import { getLatestProperties, getProperties } from "@/lib/appwrite";
-import seed from "@/lib/seed";
 
 const Home = () => {
   const { user } = useGlobalContext();
@@ -42,7 +39,6 @@ const Home = () => {
     params: {
       filter: params.filter!,
       query: params.query!,
-      limit: 6,
     },
     skip: true,
   });
@@ -51,7 +47,6 @@ const Home = () => {
     refetch({
       filter: params.filter!,
       query: params.query!,
-      limit: 6,
     });
   }, [params.filter, params.query]);
 
@@ -59,23 +54,15 @@ const Home = () => {
 
   return (
     <SafeAreaView className="h-full bg-white">
-      <Button title="seed" onPress={seed} />
       <FlatList
-        data={properties}
-        numColumns={2}
-        renderItem={({ item }) => (
-          <Card item={item} onPress={() => handleCardPress(item.$id)} />
-        )}
-        keyExtractor={(item) => item.$id}
+        data={[]} // Empty data array since we're not using the Card component
+        keyExtractor={(item, index) => `item-${index}`}
         contentContainerClassName="pb-32"
-        columnWrapperClassName="flex gap-5 px-5"
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator size="large" className="text-primary-300 mt-5" />
-          ) : (
-            <NoResults />
-          )
+          ) : null // Render nothing when there are no results
         }
         ListHeaderComponent={() => (
           <View className="px-5">
@@ -95,7 +82,6 @@ const Home = () => {
                   </Text>
                 </View>
               </View>
-              <Image source={icons.bell} className="size-6" />
             </View>
 
             <Search />
@@ -114,9 +100,7 @@ const Home = () => {
 
               {latestPropertiesLoading ? (
                 <ActivityIndicator size="large" className="text-primary-300" />
-              ) : !latestProperties || latestProperties.length === 0 ? (
-                <NoResults />
-              ) : (
+              ) : !latestProperties || latestProperties.length === 0 ? null : ( // Render nothing when there are no featured properties
                 <FlatList
                   data={latestProperties}
                   renderItem={({ item }) => (
@@ -125,29 +109,15 @@ const Home = () => {
                       onPress={() => handleCardPress(item.$id)}
                     />
                   )}
-                  keyExtractor={(item) => item.$id}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerClassName="flex gap-5 mt-5"
+                  keyExtractor={(item, index) =>
+                    item.$id ? item.$id.toString() : `latest-item-${index}`
+                  }
+                  numColumns={2} // Display 2 cards per row
+                  columnWrapperStyle={{ gap: 5 }} // Add gap between columns
+                  contentContainerStyle={{ gap: 7, paddingHorizontal: 13 }} // Add gap between rows
+                  showsVerticalScrollIndicator={false}
                 />
               )}
-            </View>
-
-            {/* <Button title="seed" onPress={seed} /> */}
-
-            <View className="mt-5">
-              <View className="flex flex-row items-center justify-between">
-                <Text className="text-xl font-rubik-bold text-black-300">
-                  Our Recommendation
-                </Text>
-                <TouchableOpacity>
-                  <Text className="text-base font-rubik-bold text-primary-300">
-                    See all
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <Filters />
             </View>
           </View>
         )}
